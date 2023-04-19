@@ -31,7 +31,7 @@ class Crawler:
         self.driver = None
         self.database = db
 
-    def getInfoByname(self, name):
+    def searchAppByName(self, name):
         pageInfo = self.playStore["listPage"]
         url = pageInfo["defaultUrl"] + quote(name) + pageInfo["basicQuery"]
 
@@ -41,13 +41,13 @@ class Crawler:
         container = self.soup.find("div", {"class": "XUIuZ"})
 
         if container == None:
-            appId, title, madeBy = self._inCorrectQuery()
+            appStoreId, title, madeBy = self._inCorrectQuery()
         else:
-            appId, title, madeBy = self._correctQuery(container)
+            appStoreId, title, madeBy = self._correctQuery(container)
 
         self._resetSoup()
 
-        return {"name": title.text + " madeBy " + madeBy.text, "appId": appId}
+        return {"name": title.text + " madeBy " + madeBy.text, "appStoreId": appStoreId}
 
     def _correctQuery(self, container):
         appId = container.find("a", {"class": "Qfxief"}).attrs["href"].split("?id=")[1]
@@ -78,9 +78,9 @@ class Crawler:
     def _resetSoup(self):
         self.soup = None
 
-    def crawlReviewCount(self, appId):
+    def crawlReviewCount(self, appStoreId):
         pageInfo = self.playStore["detailPage"]
-        url = pageInfo["defaultUrl"] + appId + pageInfo["basicQuery"]
+        url = pageInfo["defaultUrl"] + appStoreId + pageInfo["basicQuery"]
 
         response = requests.get(url)
         self.soup = BeautifulSoup(response.content, "html.parser")
@@ -94,13 +94,13 @@ class Crawler:
 
     def crawlComments(
         self,
-        appId,
+        appStoreId,
         appRowId,
         progressBar,
         howmany=200,
     ):
         pageInfo = self.playStore["detailPage"]
-        url = pageInfo["defaultUrl"] + appId + pageInfo["basicQuery"]
+        url = pageInfo["defaultUrl"] + appStoreId + pageInfo["basicQuery"]
 
         self._setSelenium()
         self.driver.get(url)
@@ -197,7 +197,3 @@ class Crawler:
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         self.driver = webdriver.Chrome("./chromedriver", options=options)
-
-    # def _savePoint():
-
-    # def checkprogressed():
