@@ -54,7 +54,9 @@ def main():
     ## init progress bar
     pbar = tqdm(total=reqReviewCount)
     ## start crawl
-    playStoreCrawler.crawlReviews(appInfo["appStoreId"], lastId, pbar)
+    playStoreCrawler.crawlReviews(
+        appInfo["appStoreId"], lastId, pbar, reqReviewCount=reqReviewCount
+    )
     ## close progress bar
     pbar.close()
 
