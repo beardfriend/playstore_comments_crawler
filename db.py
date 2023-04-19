@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS apps
 insertQueryApps = """
     INSERT INTO apps (name, request_count, url) VALUES (%s, %s, %s)"""
 
-insertQueryreviews = """
+insertQueryReviews = """
     INSERT INTO reviews (app_id, user_name, rating, reviewed_at, content, useful_count)
     VALUES (%s, %s, %s, %s, %s, %s)
 """
