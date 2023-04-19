@@ -25,7 +25,7 @@ def main():
 
         # insert app info
         cursor = db.cursor()
-        cursor.execute(insertQueryApps, (result["name"], result["appId"]))
+        cursor.execute(insertQueryApps, (result["name"], howmany, result["appId"]))
         lastid = cursor.lastrowid
         db.commit()
         cursor.close()
@@ -45,7 +45,7 @@ def main():
         quit()
 
     print("모두 수집되었습니다. :) ")
-    print('수집한 데이터에 접근하시려면 숫자 : "' + lastid + '"를 기억해주세요')
+    print('수집한 데이터에 접근하시려면 숫자 : "' + str(lastid) + '"를 기억해주세요')
 
 
 main()

@@ -53,13 +53,14 @@ createTableQueryApps = """
 CREATE TABLE IF NOT EXISTS apps
 (
     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
+    request_count INT,
     url VARCHAR(100),
     name VARCHAR(255),
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
 )"""
 
 insertQueryApps = """
-    INSERT INTO apps (name, url) VALUES (%s, %s)"""
+    INSERT INTO apps (name, request_count, url) VALUES (%s, %s, %s)"""
 
 insertQueryComments = """
     INSERT INTO comments (app_id, user_name, rating, reviewed_at, content, useful_count)

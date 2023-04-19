@@ -146,8 +146,10 @@ class Crawler:
                 ).text
 
                 # 별점
-                s = element.find_element(By.XPATH, "./header/div[2]/div").get_attribute("aria-label")
-                print(s)
+                s = element.find_element(By.XPATH, "./header/div[2]/div").get_attribute(
+                    "aria-label"
+                )
+
                 rating = float(
                     element.find_element(By.XPATH, "./header/div[2]/div")
                     .get_attribute("aria-label")
@@ -172,7 +174,7 @@ class Crawler:
                         element.find_element(By.XPATH, "./div[2]/div").text,
                     )
                 except:
-                    continue
+                    usefulCount = 0
                 # insert into database
                 cursor = self.database.cursor()
                 cursor.execute(
