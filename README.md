@@ -1,4 +1,4 @@
-# PlayStore Reviews Crawlers
+# PlayStore Reviews Crawler
 
 crawler folllow your request (appname, the number of reviews you want)
 

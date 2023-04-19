@@ -6,7 +6,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver import ActionChains
 from selenium.webdriver.common.actions.wheel_input import ScrollOrigin
-from db import insertQueryComments
+from db import insertQueryReviews
 import re
 from urllib.parse import urlencode
 from datetime import datetime
@@ -110,7 +110,7 @@ class Crawler:
 
         return reviewCount
 
-    def crawlComments(
+    def crawlReviews(
         self,
         appStoreId,
         appRowId,
@@ -125,7 +125,7 @@ class Crawler:
         self._setSelenium()
         self.driver.get(url)
 
-        # click more comments
+        # click more reviews
         button = self.driver.find_element(
             By.XPATH,
             '//*[@id="yDmH0d"]/c-wiz[2]/div/div/div[1]/div[2]/div/div[1]/c-wiz[4]/section/header/div/div[2]/button/i',
@@ -135,30 +135,30 @@ class Crawler:
         ).perform()
         time.sleep(2)
 
-        # finding commentsContainer
-        commentsPopup = None
+        # finding reviewsContainer
+        reviewsPopup = None
         try:
-            commentsPopup = self.driver.find_element(
+            reviewsPopup = self.driver.find_element(
                 By.XPATH,
                 '//*[@id="yDmH0d"]/div[4]/div[2]/div/div/div/div/div[2]',
             )
         except:
-            commentsPopup = self.driver.find_element(
+            reviewsPopup = self.driver.find_element(
                 By.XPATH,
                 '//*[@id="yDmH0d"]/div[3]/div[2]/div/div/div/div/div[2]',
             )
-        commentsContainer = commentsPopup.find_element(By.XPATH, "./div/div[1]")
+        reviewsContainer = reviewsPopup.find_element(By.XPATH, "./div/div[1]")
 
         # crawl comment
         collectedCount = 0
         while collectedCount < reqReviewCount:
-            renderedComments = len(commentsContainer.find_elements(By.XPATH, "./*"))
-            for i in range(collectedCount, renderedComments):
+            renderedreviews = len(reviewsContainer.find_elements(By.XPATH, "./*"))
+            for i in range(collectedCount, renderedreviews):
                 # stop
                 if collectedCount == reqReviewCount:
                     break
 
-                comment = commentsContainer.find_element(By.XPATH, f"./div[{i+1}]")
+                comment = reviewsContainer.find_element(By.XPATH, f"./div[{i+1}]")
 
                 # crawl Review Info
                 (
@@ -172,7 +172,7 @@ class Crawler:
                 # insert into database
                 cursor = self.database.cursor()
                 cursor.execute(
-                    insertQueryComments,
+                    insertQueryReviews,
                     (appRowId, userName, rating, reviewdAt, content, usefulCount),
                 )
                 self.database.commit()
@@ -185,7 +185,7 @@ class Crawler:
                 collectedCount += 1
 
             # rendering review
-            self._scrollDown(commentsContainer)
+            self._scrollDown(reviewsContainer)
         
         self._resetQuery()
 

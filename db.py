@@ -12,7 +12,7 @@ def connect():
         cursor = conn.cursor()
         cursor.execute(createDatabaseQuery)
         cursor.execute(useDatabaseQuery)
-        cursor.execute(createTableQueryComments)
+        cursor.execute(createTableQueryReviews)
         cursor.execute(createTableQueryApps)
         conn.commit()
         cursor.close()
@@ -29,8 +29,8 @@ CREATE DATABASE IF NOT EXISTS playstore"""
 useDatabaseQuery = """
 USE playstore"""
 
-createTableQueryComments = """
-CREATE TABLE IF NOT EXISTS comments
+createTableQueryReviews = """
+CREATE TABLE IF NOT EXISTS reviews
 (
     id INT NOT NULL AUTO_INCREMENT PRIMARY KEY,
     app_id INT NOT NULL,
@@ -55,7 +55,7 @@ CREATE TABLE IF NOT EXISTS apps
 insertQueryApps = """
     INSERT INTO apps (name, request_count, url) VALUES (%s, %s, %s)"""
 
-insertQueryComments = """
-    INSERT INTO comments (app_id, user_name, rating, reviewed_at, content, useful_count)
+insertQueryreviews = """
+    INSERT INTO reviews (app_id, user_name, rating, reviewed_at, content, useful_count)
     VALUES (%s, %s, %s, %s, %s, %s)
 """

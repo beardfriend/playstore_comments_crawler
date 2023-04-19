@@ -35,7 +35,7 @@ def main():
         "total reivews :", playStoreCrawler.crawlReviewCount(appInfo["appStoreId"])
     )
     reqReviewCount = int(
-        input("Please enter the number of comments to crawl (as a number): ")
+        input("Please enter the number of reviews to crawl (as a number): ")
     )
 
     # printing (start crawling)
@@ -54,7 +54,7 @@ def main():
     ## init progress bar
     pbar = tqdm(total=reqReviewCount)
     ## start crawl
-    playStoreCrawler.crawlComments(appInfo["appStoreId"], lastId, pbar)
+    playStoreCrawler.crawlReviews(appInfo["appStoreId"], lastId, pbar)
     ## close progress bar
     pbar.close()
 
