@@ -4,11 +4,11 @@ from urllib.parse import quote
 import time
 from selenium import webdriver
 from selenium.webdriver.common.by import By
-from selenium.webdriver import Keys, ActionChains
+from selenium.webdriver import ActionChains
 from selenium.webdriver.common.actions.wheel_input import ScrollOrigin
 from db import insertQueryComments
 import re
-from tqdm import tqdm
+from urllib.parse import urlencode
 from datetime import datetime
 
 
@@ -16,14 +16,12 @@ class Crawler:
     def __init__(self, db):
         self.playStore = {
             "listPage": {
-                "defaultUrl": "https://play.google.com/store/search?q=",
-                "query": "",
-                "basicQuery": "&c=apps&hl=ko",
+                "url": "https://play.google.com/store/search",
+                "query": {"c": "apps", "hl": "ko"},  # q
             },
             "detailPage": {
-                "defaultUrl": "https://play.google.com/store/apps/details?id=",
-                "query": "",
-                "basicQuery": "&hl=ko",
+                "url": "https://play.google.com/store/apps/details",
+                "query": {"hl": "ko"},  # id
             },
         }
 
@@ -32,24 +30,39 @@ class Crawler:
         self.database = db
 
     def searchAppByName(self, name):
-        pageInfo = self.playStore["listPage"]
-        url = pageInfo["defaultUrl"] + quote(name) + pageInfo["basicQuery"]
+        # set url
+        self._addQuery("listPage", {"q": quote(name)})
+        url = self._getUrl("listPage")
 
+        # get html
         response = requests.get(url)
         self.soup = BeautifulSoup(response.content, "html.parser")
-
         container = self.soup.find("div", {"class": "XUIuZ"})
 
+        # extract
         if container == None:
-            appStoreId, title, madeBy = self._inCorrectQuery()
+            appStoreId, title, madeBy = self._recommandPage()
         else:
-            appStoreId, title, madeBy = self._correctQuery(container)
+            appStoreId, title, madeBy = self._normalPage(container)
 
+        # reset
         self._resetSoup()
+        self._resetQuery()
 
         return {"name": title.text + " madeBy " + madeBy.text, "appStoreId": appStoreId}
 
-    def _correctQuery(self, container):
+    def _getUrl(self, key):
+        queryString = urlencode(self.playStore[key]["query"])
+        return f'{self.playStore[key]["url"]}?{queryString}'
+
+    def _addQuery(self, key, query):
+        self.playStore[key]["query"].update(query)
+
+    def _resetQuery(self):
+        self.playStore["listPage"]["query"] = {"c": "apps", "hl": "ko"}
+        self.playStore["detailPage"]["query"] = {"hl": "ko"}
+
+    def _normalPage(self, container):
         appId = container.find("a", {"class": "Qfxief"}).attrs["href"].split("?id=")[1]
         title = container.find("div", {"class": "vWM94c"})
         madeBy = container.find("div", {"class": "LbQbAe"})
@@ -59,7 +72,7 @@ class Crawler:
             madeBy,
         )
 
-    def _inCorrectQuery(self):
+    def _recommandPage(self):
         # get app Id
         link = self.soup.find("a", {"class": "Si6A0c"})
         appId = link.attrs["href"].split("?id=")[1]
@@ -79,16 +92,21 @@ class Crawler:
         self.soup = None
 
     def crawlReviewCount(self, appStoreId):
-        pageInfo = self.playStore["detailPage"]
-        url = pageInfo["defaultUrl"] + appStoreId + pageInfo["basicQuery"]
+        # set url
+        self._addQuery("detailPage", {"id": appStoreId})
+        url = self._getUrl("detailPage")
 
+        # get html
         response = requests.get(url)
         self.soup = BeautifulSoup(response.content, "html.parser")
-
         container = self.soup.find("div", {"class": "g1rdde"})
 
-        reviewCount = container.text.split(" ")[1]
+        # reset
         self._resetSoup()
+        self._resetQuery()
+
+        # transform
+        reviewCount = container.text.split(" ")[1]
 
         return reviewCount
 
@@ -97,95 +115,77 @@ class Crawler:
         appStoreId,
         appRowId,
         progressBar,
-        howmany=200,
+        reqReviewCount=200,
     ):
-        pageInfo = self.playStore["detailPage"]
-        url = pageInfo["defaultUrl"] + appStoreId + pageInfo["basicQuery"]
+        # set url
+        self._addQuery("detailPage", {"id": appStoreId})
+        url = self._getUrl("detailPage")
 
+        # start chrome browser with headless
         self._setSelenium()
         self.driver.get(url)
 
-        # click
+        # click more comments
         button = self.driver.find_element(
             By.XPATH,
             '//*[@id="yDmH0d"]/c-wiz[2]/div/div/div[1]/div[2]/div/div[1]/c-wiz[4]/section/header/div/div[2]/button/i',
         )
-
         ActionChains(self.driver).move_to_element(button).pause(1).click().pause(
             1
         ).perform()
-
         time.sleep(2)
-        commentEles = None
+
+        # finding commentsContainer
+        commentsPopup = None
         try:
-            commentEles = self.driver.find_element(
+            commentsPopup = self.driver.find_element(
                 By.XPATH,
                 '//*[@id="yDmH0d"]/div[4]/div[2]/div/div/div/div/div[2]',
             )
         except:
-            commentEles = self.driver.find_element(
+            commentsPopup = self.driver.find_element(
                 By.XPATH,
                 '//*[@id="yDmH0d"]/div[3]/div[2]/div/div/div/div/div[2]',
             )
+        commentsContainer = commentsPopup.find_element(By.XPATH, "./div/div[1]")
 
+        # crawl comment
         collectedCount = 0
-        parent = commentEles.find_element(By.XPATH, "./div/div[1]")
-
-        while collectedCount < howmany:
-            length = len(parent.find_elements(By.XPATH, "./*"))
-
-            for i in range(collectedCount, length):
-                if collectedCount == howmany:
+        while collectedCount < reqReviewCount:
+            renderedComments = len(commentsContainer.find_elements(By.XPATH, "./*"))
+            for i in range(collectedCount, renderedComments):
+                # stop
+                if collectedCount == reqReviewCount:
                     break
 
-                element = parent.find_element(By.XPATH, f"./div[{i+1}]")
+                comment = commentsContainer.find_element(By.XPATH, f"./div[{i+1}]")
 
-                # 유저이름
-                userName = element.find_element(
-                    By.XPATH, "./header/div[1]/div[1]/div"
-                ).text
+                # crawl Review Info
+                (
+                    userName,
+                    rating,
+                    reviewdAt,
+                    content,
+                    usefulCount,
+                ) = self._crawlReviewInfo(comment)
 
-                # 별점
-                s = element.find_element(By.XPATH, "./header/div[2]/div").get_attribute(
-                    "aria-label"
-                )
-
-                rating = float(
-                    element.find_element(By.XPATH, "./header/div[2]/div")
-                    .get_attribute("aria-label")
-                    .split(" ")[3][:1]
-                )
-
-                # 리뷰시점
-                reviewedAt = element.find_element(By.XPATH, "./header/div[2]/span").text
-
-                date_obj = datetime.strptime(reviewedAt, "%Y년 %m월 %d일")
-
-                reviewdAtDate = date_obj.strftime("%Y-%m-%d")
-                # 리뷰 내용
-                content = element.find_element(By.XPATH, "./div[1]").text
-
-                # 유용하다고 평가한 사람의 수
-                usefulCount = 0
-                try:
-                    usefulCount = re.sub(
-                        r"[^0-9]",
-                        "",
-                        element.find_element(By.XPATH, "./div[2]/div").text,
-                    )
-                except:
-                    usefulCount = 0
                 # insert into database
                 cursor = self.database.cursor()
                 cursor.execute(
                     insertQueryComments,
-                    (appRowId, userName, rating, reviewdAtDate, content, usefulCount),
+                    (appRowId, userName, rating, reviewdAt, content, usefulCount),
                 )
                 self.database.commit()
                 cursor.close()
+
+                # update Progress Bar
                 progressBar.update(1)
+
+                # update collected Count
                 collectedCount += 1
-            self._scrollDown(commentEles)
+
+            # rendering review
+            self._scrollDown(commentsContainer)
 
     def _scrollDown(self, parent):
         scroll_origin = ScrollOrigin.from_element(parent)
@@ -197,3 +197,33 @@ class Crawler:
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         self.driver = webdriver.Chrome("./chromedriver", options=options)
+
+    def _crawlReviewInfo(self, comment):
+        # get userName
+        userName = comment.find_element(By.XPATH, "./header/div[1]/div[1]/div").text
+        # get rating
+        rating = float(
+            comment.find_element(By.XPATH, "./header/div[2]/div")
+            .get_attribute("aria-label")
+            .split(" ")[3][:1]
+        )
+        # get reviewdAt
+        reviewedAtRaw = comment.find_element(By.XPATH, "./header/div[2]/span").text
+        date_obj = datetime.strptime(reviewedAtRaw, "%Y년 %m월 %d일")
+        reviewdAt = date_obj.strftime("%Y-%m-%d")
+
+        # get content
+        content = comment.find_element(By.XPATH, "./div[1]").text
+
+        # get usefulCount
+        usefulCount = 0
+        try:
+            usefulCount = re.sub(
+                r"[^0-9]",
+                "",
+                comment.find_element(By.XPATH, "./div[2]/div").text,
+            )
+        except:
+            usefulCount = 0
+
+        return userName, rating, reviewdAt, content, usefulCount

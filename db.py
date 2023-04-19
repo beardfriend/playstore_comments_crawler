@@ -23,13 +23,6 @@ def connect():
     return conn
 
 
-# 데이터 삽입
-# sql = "INSERT INTO 테이블이름 (칼럼1, 칼럼2) VALUES (%s, %s)"
-# values = ("값1", "값2")
-# cursor.execute(sql, values)
-
-# query #
-
 createDatabaseQuery = """
 CREATE DATABASE IF NOT EXISTS playstore"""
 
