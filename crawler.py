@@ -186,6 +186,8 @@ class Crawler:
 
             # rendering review
             self._scrollDown(commentsContainer)
+        
+        self._resetQuery()
 
     def _scrollDown(self, parent):
         scroll_origin = ScrollOrigin.from_element(parent)
