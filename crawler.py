@@ -7,6 +7,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver import Keys, ActionChains
 from selenium.webdriver.common.actions.wheel_input import ScrollOrigin
 import re
+from tqdm import tqdm
 
 
 class Crawler:
@@ -74,13 +75,24 @@ class Crawler:
     def _resetSoup(self):
         self.soup = None
 
+    def crawlReviewCount(self, appId):
+        pageInfo = self.playStore["detailPage"]
+        url = pageInfo["defaultUrl"] + appId + pageInfo["basicQuery"]
+
+        response = requests.get(url)
+        self.soup = BeautifulSoup(response.content, "html.parser")
+
+        container = self.soup.find("div", {"class": "g1rdde"})
+
+        reviewCount = container.text.split(" ")[1]
+        self._resetSoup()
+
+        return reviewCount
+
     def crawlComments(
         self,
         appId,
-        startDate="1",
-        endDate="2",
-        minStarredCount="1",
-        maxStarredCount="5",
+        progressBar,
         howmany=200,
     ):
         pageInfo = self.playStore["detailPage"]
@@ -100,20 +112,31 @@ class Crawler:
         ).perform()
 
         time.sleep(2)
-        commentEles = self.driver.find_element(
-            By.XPATH,
-            '//*[@id="yDmH0d"]/div[4]/div[2]/div/div/div/div/div[2]',
-        )
+        commentEles = None
+        try:
+            commentEles = self.driver.find_element(
+                By.XPATH,
+                '//*[@id="yDmH0d"]/div[4]/div[2]/div/div/div/div/div[2]',
+            )
+        except:
+            commentEles = self.driver.find_element(
+                By.XPATH,
+                '//*[@id="yDmH0d"]/div[3]/div[2]/div/div/div/div/div[2]',
+            )
 
         # 첫 번째 방법 요소 길이를 구하고
         # 요소 길이를 구하고 길이가 다 되면 스크롤해서 길이부터 계속 크롤링
-        collectedCount = 0
 
+        collectedCount = 0
         parent = commentEles.find_element(By.XPATH, "./div/div[1]")
 
         while collectedCount < howmany:
             length = len(parent.find_elements(By.XPATH, "./*"))
+
             for i in range(collectedCount, length):
+                if collectedCount == howmany:
+                    break
+
                 element = parent.find_element(By.XPATH, f"./div[{i+1}]")
 
                 # 유저이름
@@ -140,13 +163,11 @@ class Crawler:
                         "",
                         element.find_element(By.XPATH, "./div[2]/div").text,
                     )
+
                 except:
                     continue
-
-                print(usefulCount)
-
-            collectedCount = length
-
+                progressBar.update(1)
+                collectedCount += 1
             self._scrollDown(commentEles)
 
     def _scrollDown(self, parent):
@@ -155,7 +176,7 @@ class Crawler:
 
     def _setSelenium(self):
         options = webdriver.ChromeOptions()
-        # options.add_argument("headless")
+        options.add_argument("headless")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         self.driver = webdriver.Chrome("./chromedriver", options=options)
