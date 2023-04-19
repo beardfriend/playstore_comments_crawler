@@ -6,12 +6,14 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver import Keys, ActionChains
 from selenium.webdriver.common.actions.wheel_input import ScrollOrigin
+from db import insertQueryComments
 import re
 from tqdm import tqdm
+from datetime import datetime
 
 
 class Crawler:
-    def __init__(self):
+    def __init__(self, db):
         self.playStore = {
             "listPage": {
                 "defaultUrl": "https://play.google.com/store/search?q=",
@@ -27,6 +29,7 @@ class Crawler:
 
         self.soup = None
         self.driver = None
+        self.database = db
 
     def getInfoByname(self, name):
         pageInfo = self.playStore["listPage"]
@@ -92,6 +95,7 @@ class Crawler:
     def crawlComments(
         self,
         appId,
+        appRowId,
         progressBar,
         howmany=200,
     ):
@@ -124,9 +128,6 @@ class Crawler:
                 '//*[@id="yDmH0d"]/div[3]/div[2]/div/div/div/div/div[2]',
             )
 
-        # 첫 번째 방법 요소 길이를 구하고
-        # 요소 길이를 구하고 길이가 다 되면 스크롤해서 길이부터 계속 크롤링
-
         collectedCount = 0
         parent = commentEles.find_element(By.XPATH, "./div/div[1]")
 
@@ -145,13 +146,20 @@ class Crawler:
                 ).text
 
                 # 별점
-                starred = element.find_element(
-                    By.XPATH, "./header/div[2]/div"
-                ).get_attribute("aria-label")
+                s = element.find_element(By.XPATH, "./header/div[2]/div").get_attribute("aria-label")
+                print(s)
+                rating = float(
+                    element.find_element(By.XPATH, "./header/div[2]/div")
+                    .get_attribute("aria-label")
+                    .split(" ")[3][:1]
+                )
 
                 # 리뷰시점
                 reviewedAt = element.find_element(By.XPATH, "./header/div[2]/span").text
 
+                date_obj = datetime.strptime(reviewedAt, "%Y년 %m월 %d일")
+
+                reviewdAtDate = date_obj.strftime("%Y-%m-%d")
                 # 리뷰 내용
                 content = element.find_element(By.XPATH, "./div[1]").text
 
@@ -163,9 +171,16 @@ class Crawler:
                         "",
                         element.find_element(By.XPATH, "./div[2]/div").text,
                     )
-
                 except:
                     continue
+                # insert into database
+                cursor = self.database.cursor()
+                cursor.execute(
+                    insertQueryComments,
+                    (appRowId, userName, rating, reviewdAtDate, content, usefulCount),
+                )
+                self.database.commit()
+                cursor.close()
                 progressBar.update(1)
                 collectedCount += 1
             self._scrollDown(commentEles)
