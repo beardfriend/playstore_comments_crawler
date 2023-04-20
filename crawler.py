@@ -1,6 +1,6 @@
 from bs4 import BeautifulSoup
 import requests
-from urllib.parse import quote
+
 import time
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -31,11 +31,12 @@ class Crawler:
 
     def searchAppByName(self, name):
         # set url
-        self._addQuery("listPage", {"q": quote(name)})
+        self._addQuery("listPage", {"q": name})
         url = self._getUrl("listPage")
-
+        print(url)
         # get html
         response = requests.get(url)
+
         self.soup = BeautifulSoup(response.content, "html.parser")
         container = self.soup.find("div", {"class": "XUIuZ"})
 
@@ -186,7 +187,6 @@ class Crawler:
 
             # rendering review
             self._scrollDown(reviewsContainer)
-        
         self._resetQuery()
 
     def _scrollDown(self, parent):
