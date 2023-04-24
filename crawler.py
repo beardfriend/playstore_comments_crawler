@@ -33,7 +33,7 @@ class Crawler:
         # set url
         self._addQuery("listPage", {"q": name})
         url = self._getUrl("listPage")
-        print(url)
+
         # get html
         response = requests.get(url)
 
@@ -195,7 +195,7 @@ class Crawler:
 
     def _setSelenium(self):
         options = webdriver.ChromeOptions()
-        options.add_argument("headless")
+        # options.add_argument("headless")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         self.driver = webdriver.Chrome("./chromedriver", options=options)
