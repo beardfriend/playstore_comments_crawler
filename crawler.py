@@ -30,9 +30,8 @@ class Crawler:
         self.database = db
 
     def searchAppByName(self, name):
-        # set url
-        self._addQuery("listPage", {"q": name})
-        url = self._getUrl("listPage")
+        # get url
+        url = self._getUrl("listPage", {"q": name})
 
         # get html
         response = requests.get(url)
@@ -42,9 +41,9 @@ class Crawler:
 
         # extract
         if container == None:
-            appStoreId, title, madeBy = self._recommandPage()
+            appStoreId, title, madeBy = self._crawlRecommandPage()
         else:
-            appStoreId, title, madeBy = self._normalPage(container)
+            appStoreId, title, madeBy = self._crawlNormalPage(container)
 
         # reset
         self._resetSoup()
@@ -52,50 +51,9 @@ class Crawler:
 
         return {"name": title.text + " madeBy " + madeBy.text, "appStoreId": appStoreId}
 
-    def _getUrl(self, key):
-        queryString = urlencode(self.playStore[key]["query"])
-        return f'{self.playStore[key]["url"]}?{queryString}'
-
-    def _addQuery(self, key, query):
-        self.playStore[key]["query"].update(query)
-
-    def _resetQuery(self):
-        self.playStore["listPage"]["query"] = {"c": "apps", "hl": "ko"}
-        self.playStore["detailPage"]["query"] = {"hl": "ko"}
-
-    def _normalPage(self, container):
-        appId = container.find("a", {"class": "Qfxief"}).attrs["href"].split("?id=")[1]
-        title = container.find("div", {"class": "vWM94c"})
-        madeBy = container.find("div", {"class": "LbQbAe"})
-        return (
-            appId,
-            title,
-            madeBy,
-        )
-
-    def _recommandPage(self):
-        # get app Id
-        link = self.soup.find("a", {"class": "Si6A0c"})
-        appId = link.attrs["href"].split("?id=")[1]
-
-        # get default information
-        information = self.soup.find("div", {"class": "cXFu1"})
-
-        title = information.find("span", {"class": "DdYX5"})
-        madeBy = information.find("span", {"class": "wMUdtb"})
-        return (
-            appId,
-            title,
-            madeBy,
-        )
-
-    def _resetSoup(self):
-        self.soup = None
-
     def crawlReviewCount(self, appStoreId):
-        # set url
-        self._addQuery("detailPage", {"id": appStoreId})
-        url = self._getUrl("detailPage")
+        # get url
+        url = self._getUrl("detailPage", {"id": appStoreId})
 
         # get html
         response = requests.get(url)
@@ -118,9 +76,8 @@ class Crawler:
         progressBar,
         reqReviewCount=200,
     ):
-        # set url
-        self._addQuery("detailPage", {"id": appStoreId})
-        url = self._getUrl("detailPage")
+        # get url
+        url = self._getUrl("detailPage", {"id": appStoreId})
 
         # start chrome browser with headless
         self._setSelenium()
@@ -189,13 +146,52 @@ class Crawler:
             self._scrollDown(reviewsContainer)
         self._resetQuery()
 
+    def _getUrl(self, key, query):
+        self.playStore[key]["query"].update(query)
+
+        queryString = urlencode(self.playStore[key]["query"])
+        return f'{self.playStore[key]["url"]}?{queryString}'
+
+    def _resetQuery(self):
+        self.playStore["listPage"]["query"] = {"c": "apps", "hl": "ko"}
+        self.playStore["detailPage"]["query"] = {"hl": "ko"}
+
+    def _crawlNormalPage(self, container):
+        appId = container.find("a", {"class": "Qfxief"}).attrs["href"].split("?id=")[1]
+        title = container.find("div", {"class": "vWM94c"})
+        madeBy = container.find("div", {"class": "LbQbAe"})
+        return (
+            appId,
+            title,
+            madeBy,
+        )
+
+    def _crawlRecommandPage(self):
+        # get app Id
+        link = self.soup.find("a", {"class": "Si6A0c"})
+        appId = link.attrs["href"].split("?id=")[1]
+
+        # get default information
+        information = self.soup.find("div", {"class": "cXFu1"})
+
+        title = information.find("span", {"class": "DdYX5"})
+        madeBy = information.find("span", {"class": "wMUdtb"})
+        return (
+            appId,
+            title,
+            madeBy,
+        )
+
+    def _resetSoup(self):
+        self.soup = None
+
     def _scrollDown(self, parent):
         scroll_origin = ScrollOrigin.from_element(parent)
         ActionChains(self.driver).scroll_from_origin(scroll_origin, 0, 10000).perform()
 
     def _setSelenium(self):
         options = webdriver.ChromeOptions()
-        # options.add_argument("headless")
+        options.add_argument("headless")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         self.driver = webdriver.Chrome("./chromedriver", options=options)
